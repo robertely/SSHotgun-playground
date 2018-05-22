@@ -1,10 +1,10 @@
-### Supported ssh versions: 
-[_OpenSSH 3.9/3.9p1 (2004-08-18)_](https://www.openssh.com/txt/release-3.9)
-* First release supporting multiplexing
-* Functionally this kills compatability for old versions of centos 5
-* Doesn't support `ControlMaster=auto` but we don't need it if we manage the sockets our self.
-* We should manage the sockets our self just incase.
-* There are a number of bugs and fixes to this mode after this release, but this is I think the bare minimum.
+### Multiplexing: 
+* First openssh release supporting multiplexing [_OpenSSH 3.9/3.9p1 (2004-08-18)_](https://www.openssh.com/txt/release-3.9)
+  * Doesn't support `ControlMaster=auto` but we don't need it if we manage the sockets our self.
+  * Centos newer than 5.x needed
+  * We should manage the sockets our self just incase.
+* Limited to 10 simultaneous connections by default as of:
+  * [ OpenSSH 5.1/5.1p1 (2008-07-22) ] (https://www.openssh.com/txt/release-5.1)
 
 ### get to know pty:
 * /proc/sys/kernel/pty/{max, nr, reserve} (osx?)
