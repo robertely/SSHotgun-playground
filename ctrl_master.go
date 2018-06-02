@@ -80,9 +80,9 @@ func (cm ControlMaster) Kill() {
 	cm.cmd.Process.Signal(os.Kill)
 }
 
-// Check - ssh ctl_cmd
+// Ready - ssh ctl_cmd
 // (check that the master process is running)
-func (cm ControlMaster) Check() bool {
+func (cm ControlMaster) Ready() bool {
 	stdout := cm.sendCtrlCmd("check")
 	if strings.HasPrefix(string(stdout), "Master running") {
 		return true
@@ -90,8 +90,8 @@ func (cm ControlMaster) Check() bool {
 	return false
 }
 
-func (cm ControlMaster) ReadyWait() {
-	for !cm.Check() {
+func (cm ControlMaster) BReady() {
+	for !cm.Ready() {
 		time.Sleep(50 * time.Millisecond)
 	}
 	return
