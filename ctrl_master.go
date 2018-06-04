@@ -25,15 +25,17 @@ type ControlMaster struct {
 	ptySize    pty.Winsize
 	socketPath string
 	targetHost string
-	targetPort string
+	targetPort int
 }
 
 // NewControlMaster - ControlMaster consturctor
-func NewControlMaster(tHost, tPort, socketPath string) *ControlMaster {
+func NewControlMaster(tUser, tHost string, tPort int) ControlMaster {
 	name := "ssh"
-	args := []string{"-M", "-N", "-oControlPath=" + socketPath, tHost, "-p", tPort} // "-oControlPersist=yes"
+	fqcp := tUser + "@" + tHost
+	socketPath := "sshotgun-%h-%p-%C.sock"
+	args := []string{"-M", "-N", "-oControlPath=" + socketPath, fqcp, "-p", string(tPort)} // "-oControlPersist=yes"
 
-	cm := new(ControlMaster)
+	cm := ControlMaster{}
 	cm.targetHost = tHost
 	cm.targetPort = tPort
 	cm.ptySize = pty.Winsize{Rows: 24, Cols: 80, X: 1024, Y: 768}
@@ -43,7 +45,7 @@ func NewControlMaster(tHost, tPort, socketPath string) *ControlMaster {
 }
 
 // Open - starts ssh with control master configuration
-func (cm *ControlMaster) Open() {
+func (cm ControlMaster) Open() {
 	var err error // K. https://github.com/golang/go/issues/6842
 	cm.ptmx, err = pty.Start(cm.cmd)
 	if err != nil {
@@ -54,9 +56,9 @@ func (cm *ControlMaster) Open() {
 	terminal.MakeRaw(int(cm.ptmx.Fd()))
 }
 
-func (cm *ControlMaster) sendCtrlCmd(ctrlcmd string) string {
+func (cm ControlMaster) sendCtrlCmd(ctrlcmd string) string {
 	name := "ssh"
-	args := []string{"-oControlPath=" + cm.socketPath, cm.targetHost, "-p", cm.targetPort, "-O", ctrlcmd}
+	args := []string{"-oControlPath=" + cm.socketPath, cm.targetHost, "-p", string(cm.targetPort), "-O", ctrlcmd}
 	cmd := exec.Command(name, args...)
 	stdout, err := cmd.CombinedOutput()
 	if err != nil {
@@ -66,7 +68,7 @@ func (cm *ControlMaster) sendCtrlCmd(ctrlcmd string) string {
 	return string(stdout)
 }
 
-func (cm *ControlMaster) Close() {
+func (cm ControlMaster) Close() {
 	cm.ptmx.Close()
 }
 
