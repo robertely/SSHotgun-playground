@@ -26,6 +26,7 @@ type ControlMaster struct {
 	socketPath string
 	targetHost string
 	targetPort int
+	logs       chan string
 }
 
 // NewControlMaster - ControlMaster consturctor
@@ -41,6 +42,15 @@ func NewControlMaster(tUser, tHost string, tPort int) ControlMaster {
 	cm.ptySize = pty.Winsize{Rows: 24, Cols: 80, X: 1024, Y: 768}
 	cm.cmd = exec.Command(name, args...)
 	cm.socketPath = socketPath
+	cm.logs = make(chan string, 1000) // TODO: not this.
+
+	// go func() {
+	// 	outPipe, _ := action.cmd.StdoutPipe()
+	// 	outScanner := bufio.NewScanner(outPipe)
+	// 	for outScanner.Scan() {
+	// 		action.Logs <- outScanner.Text()
+	// 	}
+	// }()
 	return cm
 }
 

@@ -1,6 +1,0 @@
-version: '2'
-services:
-  test_fixture:
-    build: .
-    ports:
-     - "2200-2209:22"

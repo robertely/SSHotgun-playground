@@ -4,6 +4,9 @@ if [ ! -f testing_key.rsa ]; then
   ssh-keygen -t rsa -b 1024 -C testing_key_only -N '' -f testing_key.rsa
 fi
 
-docker-compose up -d --build --scale test_fixture=10
+docker build . -t bevy_test_fixture
+
+docker run -d -p 2022:22 bevy_test_fixture
+# docker-compose up -d --build --scale test_fixture=10
 
 # sh test_user@localhost -q -p 2200 -i testing_key.rsa -oBatchMode=yes -oStrictHostKeyChecking=no

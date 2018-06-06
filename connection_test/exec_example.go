@@ -18,5 +18,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Println(string(cmdOut))
+	exec.
+		fmt.Println(string(cmdOut))
 }

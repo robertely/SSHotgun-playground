@@ -1,4 +1,4 @@
-### Multiplexing: 
+### Multiplexing:
 * First openssh release supporting multiplexing [_OpenSSH 3.9/3.9p1 (2004-08-18)_](https://www.openssh.com/txt/release-3.9)
   * Doesn't support `ControlMaster=auto` but we don't need it if we manage the sockets our self.
   * Centos newer than 5.x needed
@@ -17,7 +17,11 @@
   * `watch -n 1 -d "ls -1 *.sock"`
   * `watch -n 1 lsof +D /dev/pts/`
   * `watch -n 1 pstree -lA '\`pidof control_master_test\`'`
-
+* FDs are going to be a limit. A dangerous one.
+* Prometheus seems to have some kind of awareness.
+  * `level=info ts=2018-06-05T18:49:29.503230907Z caller=main.go:223 fd_limits="(soft=7168, hard=9223372036854775807)"``
+    * Never mind. It reports, but that's all. It doesn't do shit with it:
+      * https://github.com/prometheus/prometheus/search?utf8=%E2%9C%93&q=FdLimits&type=
 
 ### Preflight script
 * stick to posix tools `#!/bin/sh`
