@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -euo pipefail
+IFS=$'\n\t'
+
+sub_help(){
+  #  sub command code taken from: https://gist.github.com/waylan/4080362
+  echo "Usage: $ProgName <subcommand> [options]\n"
+  echo "Subcommands:"
+  echo "    start     start test fixture containers"
+  echo "    stop      stop test fixture containers"
+  echo "    build     build test fixture docker image"
+  echo "    restart   restart fixture containers"
+  echo ""
+  echo "For help with each subcommand run:"
+  echo "$ProgName <subcommand> -h|--help"
+  echo ""
+}
+
+sub_start(){
+  for (( i=0; i<${1:-1}; i++)); do
+    docker run -d -p `printf 22%02d $i`:22 bevy_test_fixture
+  done
+}
+
+sub_stop(){
+  docker stop $(docker ps -q --filter ancestor=bevy_test_fixture )
+}
+
+sub_build(){
+  if [ ! -f testing_key.rsa ]; then
+    ssh-keygen -t rsa -b 1024 -C testing_key_only -N '' -f testing_key.rsa
+  fi
+  if [ ! -f bigfile.linuxiso ]; then
+    # seek=1024^2*64 or 64MB (dont use suffixes beacause they are not portable)
+    dd if=/dev/zero of=bigfile.linuxiso bs=1 count=0 seek=67108864
+  fi
+
+
+  docker build . -t bevy_test_fixture
+}
+
+sub_restart(){
+  if [ "$count" -lt "1" ]; then
+    # Gross
+    count="1"
+  fi
+  sub_stop
+  sub_start "$count"
+}
+
+sub_status(){
+  if [ "$count" -lt "1" ]; then
+    echo "Test fixture is not running"
+  elif [ "$count" -eq 1 ]; then
+    echo "Test Fixture is running $count instance"
+  else
+    echo "Test Fixture is running $count instances"
+  fi
+}
+
+ProgName=$(basename $0)
+subcommand=$1
+
+count="$(docker ps -q --filter ancestor=bevy_test_fixture | wc -l | tr -d '[:space:]')"
+
+case $subcommand in
+  "" | "-h" | "--help")
+    sub_help
+    ;;
+  *)
+    shift
+    sub_${subcommand} $@
+    # TODO this error handling breaks with `set -e`
+    if [ $? = 127 ]; then
+      echo "Error: '$subcommand' is not a known subcommand." >&2
+      echo "       Run '$ProgName --help' for a list of known subcommands." >&2
+      exit 1
+    fi
+    ;;
+esac
+
+# ssh test_user@localhost -q -p 2200 -i testing_key.rsa -oBatchMode=yes -oStrictHostKeyChecking=no
