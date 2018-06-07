@@ -6,7 +6,13 @@ fi
 
 docker build . -t bevy_test_fixture
 
+# Hash-Tag "devops"
+docker run -d -p 2024:22 bevy_test_fixture
+docker run -d -p 2023:22 bevy_test_fixture
 docker run -d -p 2022:22 bevy_test_fixture
+docker run -d -p 2021:22 bevy_test_fixture
+docker run -d -p 2020:22 bevy_test_fixture
+
 # docker-compose up -d --build --scale test_fixture=10
 
 # sh test_user@localhost -q -p 2200 -i testing_key.rsa -oBatchMode=yes -oStrictHostKeyChecking=no

@@ -3,5 +3,6 @@
 .AppleDouble
 .LSOverride
 
-test_fixture/*.rsa.pub
-test_fixture/*.rsa
+*.rsa.pub
+*.rsa
+*bigfile*

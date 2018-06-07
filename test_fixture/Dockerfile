@@ -4,6 +4,7 @@ EXPOSE 22
 # Setup ssh
 RUN apt-get update
 RUN apt-get install -y openssh-server ssh bash sudo
+# RUN install the md5 tools hashdeep?
 RUN mkdir /var/run/sshd; chmod 0755 /var/run/sshd
 
 # user account
