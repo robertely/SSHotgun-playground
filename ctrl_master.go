@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -27,22 +28,27 @@ type ControlMaster struct {
 	targetHost string
 	targetPort int
 	logs       chan string
+	fqcp       string
+	sshops     []string
 }
 
 // NewControlMaster - ControlMaster consturctor
-func NewControlMaster(tUser, tHost string, tPort int) ControlMaster {
+func NewControlMaster(tUser, tHost string, tPort int, sshops []string) ControlMaster {
 	name := "ssh"
 	fqcp := tUser + "@" + tHost
-	socketPath := "sshotgun-%h-%p-%C.sock"
-	args := []string{"-M", "-N", "-oControlPath=" + socketPath, fqcp, "-p", string(tPort)} // "-oControlPersist=yes"
-
+	// socketPath := "sshotgun-%h-%p.sock"
 	cm := ControlMaster{}
+	cm.sshops = sshops
 	cm.targetHost = tHost
+	cm.fqcp = fqcp
 	cm.targetPort = tPort
 	cm.ptySize = pty.Winsize{Rows: 24, Cols: 80, X: 1024, Y: 768}
-	cm.cmd = exec.Command(name, args...)
-	cm.socketPath = socketPath
+	cm.socketPath = fmt.Sprintf("sshotgun-%s-%s-%s.sock", tHost, tUser, strconv.Itoa(cm.targetPort))
 	cm.logs = make(chan string, 1000) // TODO: not this.
+	args := append([]string{"-M", "-N", "-oControlPath=" + cm.socketPath, fqcp, "-p", strconv.Itoa(cm.targetPort)}, sshops...)
+
+	cm.cmd = exec.Command(name, args...)
+	// fmt.Println(name, args)
 
 	// go func() {
 	// 	outPipe, _ := action.cmd.StdoutPipe()
@@ -68,14 +74,16 @@ func (cm ControlMaster) Open() {
 
 func (cm ControlMaster) sendCtrlCmd(ctrlcmd string) string {
 	name := "ssh"
-	args := []string{"-oControlPath=" + cm.socketPath, cm.targetHost, "-p", string(cm.targetPort), "-O", ctrlcmd}
+	args := append([]string{"-oControlPath=" + cm.socketPath, cm.fqcp, "-p", strconv.Itoa(cm.targetPort), "-O", ctrlcmd}, cm.sshops...)
 	cmd := exec.Command(name, args...)
-	stdout, err := cmd.CombinedOutput()
+	// fmt.Println(name, args)
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Println(err.Error())
+		fmt.Printf("%s\n", out)
 		return ""
 	}
-	return string(stdout)
+	return string(out)
 }
 
 func (cm ControlMaster) Close() {
@@ -95,16 +103,20 @@ func (cm ControlMaster) Kill() {
 // Ready - ssh ctl_cmd
 // (check that the master process is running)
 func (cm ControlMaster) Ready() bool {
-	stdout := cm.sendCtrlCmd("check")
-	if strings.HasPrefix(string(stdout), "Master running") {
-		return true
+	if _, err := os.Stat(cm.socketPath); err == nil {
+		stdout := cm.sendCtrlCmd("check")
+		if strings.HasPrefix(string(stdout), "Master running") {
+			return true
+		}
+		return false
 	}
+	fmt.Println(cm.socketPath, "Waiting for control master socket...")
 	return false
 }
 
 func (cm ControlMaster) BReady() {
 	for !cm.Ready() {
-		time.Sleep(50 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 	return
 }

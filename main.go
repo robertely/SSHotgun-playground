@@ -23,21 +23,23 @@ func (l Log) String() string {
 
 // Target holds tacos
 type Target struct {
-	Host string
-	Port int
-	User string
-	Logs chan string
-	CM   ControlMaster
+	Host   string
+	Port   int
+	User   string
+	Logs   chan string
+	CM     ControlMaster
+	SSHOps []string
 }
 
 // NewTarget Makes new TARGET BROOOOWWNNN
-func (t Target) NewTarget(h, u string, p, lbuf int) {
-	t.User = u
-	t.Host = h
-	t.Port = p
-
-	t.Logs = make(chan string, lbuf)
-	t.CM = NewControlMaster(t.User, t.Host, t.Port)
+func NewTarget(u, h string, p, lbuf int, sshops []string) *Target {
+	return &Target{
+		Host:   h,
+		Port:   p,
+		User:   u,
+		Logs:   make(chan string, lbuf),
+		CM:     NewControlMaster(u, h, p, sshops),
+		SSHOps: sshops}
 }
 
 func (t *Target) Connect() {
@@ -60,13 +62,18 @@ func (t *Target) Execute(cmd []string, pty bool) {
 }
 
 func main() {
-	// master := NewControlMaster("192.168.1.238", "22", "sshotgun-%h-%p-%C.sock")
+	ops := []string{"-itest_fixture/testing_key.rsa", "-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=/dev/null"}
+	t2200 := NewTarget("test_user", "127.0.0.1", 2200, 1000, ops)
+	scanner := bufio.NewScanner(t2200.CM.ptmx)
+	for scanner.Scan() {
+		fmt.Fprintf(os.Stdout, "\033[0;36mRx\033[0m: %s\n", scanner.Text())
+	}
+	t2200.CM.Open()
+	t2200.CM.BReady()
+	fmt.Println("Online")
+	time.Sleep(5 * time.Second)
 	// master.Open()
 	// defer master.Close()
 	// master.BReady()
 	//
-	// scanner := bufio.NewScanner(master.ptmx)
-	// for scanner.Scan() {
-	// 	fmt.Fprintf(os.Stdout, "\033[0;36mRx\033[0m: %s\n", scanner.Text())
-	// }
 }
