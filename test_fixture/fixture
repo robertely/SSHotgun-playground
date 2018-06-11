@@ -23,7 +23,9 @@ sub_start(){
 }
 
 sub_stop(){
-  docker stop $(docker ps -q --filter ancestor=bevy_test_fixture )
+  if ! sub_status; then
+    docker stop $(docker ps -q --filter ancestor=bevy_test_fixture )
+  fi
 }
 
 sub_build(){
@@ -51,11 +53,22 @@ sub_restart(){
 sub_status(){
   if [ "$count" -lt "1" ]; then
     echo "Test fixture is not running"
+    return 0
   elif [ "$count" -eq 1 ]; then
     echo "Test Fixture is running $count instance"
   else
     echo "Test Fixture is running $count instances"
   fi
+  return $count
+}
+
+sub_clean(){
+  sub_stop
+  rm -f bigfile.linuxiso
+  rm -f testing_key.rsa
+  rm -f testing_key.rsa.pub
+  docker rm $(docker ps -a -q --filter ancestor=bevy_test_fixture )
+  # docker image rm bevy_test_fixture # meh
 }
 
 ProgName=$(basename $0)
