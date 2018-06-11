@@ -3,13 +3,14 @@ set -euo pipefail
 IFS=$'\n\t'
 
 sub_help(){
-  #  sub command code taken from: https://gist.github.com/waylan/4080362
+  #  sub command code modified from: https://gist.github.com/waylan/4080362
   echo "Usage: $ProgName <subcommand> [options]\n"
   echo "Subcommands:"
   echo "    start     start test fixture containers"
   echo "    stop      stop test fixture containers"
   echo "    build     build test fixture docker image"
   echo "    restart   restart fixture containers"
+  echo "    clean     clean up after our self (does not at the moment delete images.)"
   echo ""
   echo "For help with each subcommand run:"
   echo "$ProgName <subcommand> -h|--help"
@@ -23,7 +24,7 @@ sub_start(){
 }
 
 sub_stop(){
-  if ! sub_status; then
+  if sub_status; then
     docker stop $(docker ps -q --filter ancestor=bevy_test_fixture )
   fi
 }
@@ -53,13 +54,13 @@ sub_restart(){
 sub_status(){
   if [ "$count" -lt "1" ]; then
     echo "Test fixture is not running"
-    return 0
+    return 1
   elif [ "$count" -eq 1 ]; then
     echo "Test Fixture is running $count instance"
   else
     echo "Test Fixture is running $count instances"
   fi
-  return $count
+  return 0
 }
 
 sub_clean(){
@@ -72,21 +73,21 @@ sub_clean(){
 }
 
 ProgName=$(basename $0)
-subcommand=$1
+subcommand="${1:-help}"
 
 count="$(docker ps -q --filter ancestor=bevy_test_fixture | wc -l | tr -d '[:space:]')"
 
 case $subcommand in
-  "" | "-h" | "--help")
+  "" | "-h" | "--help"| "help")
     sub_help
     ;;
   *)
     shift
-    sub_${subcommand} $@
-    # TODO this error handling breaks with `set -e`
-    if [ $? = 127 ]; then
+    if type -t sub_${subcommand}; then
+      sub_${subcommand} $@
+    else
       echo "Error: '$subcommand' is not a known subcommand." >&2
-      echo "       Run '$ProgName --help' for a list of known subcommands." >&2
+      echo "  Run '$ProgName --help' for a list of known subcommands." >&2
       exit 1
     fi
     ;;
