@@ -3,6 +3,9 @@
 .AppleDouble
 .LSOverride
 
+# Test Fixtures
 *.rsa.pub
 *.rsa
 *bigfile*
+
+bevy

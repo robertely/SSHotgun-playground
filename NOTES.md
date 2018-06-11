@@ -28,6 +28,19 @@
 * create temproary directory `mktemp`
 * make sure it's writeable
 * report full path to temporary directory back to SSHotgun
+* smth smth...
+
+```
+#!/bin/sh
+
+stty rows 24
+stty cols 80
+
+RUNNING_USER=$(id -u -n)
+WORK_DIR=$(mktemp -d -t sshotgun.$RUNNING_USER.XXXXXX)
+cd $WORK_DIR
+echo $WORK_DIR
+```
 
 ### File transfer
 * Fuck man i may use scp

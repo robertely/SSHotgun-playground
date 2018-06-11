@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -25,38 +26,26 @@ type ControlMaster struct {
 	ptmx       *os.File
 	ptySize    pty.Winsize
 	socketPath string
-	targetHost string
-	targetPort int
-	logs       chan string
-	fqcp       string
-	sshops     []string
+	sshOptions []string
+
+	Port int
+	logs chan string
 }
 
 // NewControlMaster - ControlMaster consturctor
-func NewControlMaster(tUser, tHost string, tPort int, sshops []string) ControlMaster {
+func NewControlMaster(t Target) ControlMaster {
 	name := "ssh"
-	fqcp := tUser + "@" + tHost
-	// socketPath := "sshotgun-%h-%p.sock"
 	cm := ControlMaster{}
-	cm.sshops = sshops
-	cm.targetHost = tHost
-	cm.fqcp = fqcp
-	cm.targetPort = tPort
-	cm.ptySize = pty.Winsize{Rows: 24, Cols: 80, X: 1024, Y: 768}
-	cm.socketPath = fmt.Sprintf("sshotgun-%s-%s-%s.sock", tHost, tUser, strconv.Itoa(cm.targetPort))
+	cm.sshOptions = t.sshOptions
 	cm.logs = make(chan string, 1000) // TODO: not this.
-	args := append([]string{"-M", "-N", "-oControlPath=" + cm.socketPath, fqcp, "-p", strconv.Itoa(cm.targetPort)}, sshops...)
+	cm.ptySize = pty.Winsize{Rows: 24, Cols: 80, X: 1024, Y: 768}
+	cm.socketPath = fmt.Sprintf("sshotgun-%s-%s-%s.sock", t.hostname, t.username, strconv.Itoa(t.port))
+	// add a control master...
+	cm.sshOptions = append([]string{"-oControlPath=" + cm.socketPath}, t.sshOptions...)
 
-	cm.cmd = exec.Command(name, args...)
-	// fmt.Println(name, args)
+	cm.cmd = exec.Command(name, append(cm.sshOptions, "-M", "-N", "-v")...)
+	fmt.Println(name, append(cm.sshOptions, "-M", "-N", "-v"))
 
-	// go func() {
-	// 	outPipe, _ := action.cmd.StdoutPipe()
-	// 	outScanner := bufio.NewScanner(outPipe)
-	// 	for outScanner.Scan() {
-	// 		action.Logs <- outScanner.Text()
-	// 	}
-	// }()
 	return cm
 }
 
@@ -67,6 +56,14 @@ func (cm ControlMaster) Open() {
 	if err != nil {
 		panic(err)
 	}
+	go func() {
+		outScanner := bufio.NewScanner(cm.ptmx)
+		for outScanner.Scan() {
+			// fmt.Println("----", outScanner.Text())
+			cm.logs <- outScanner.Text()
+		}
+		close(cm.logs)
+	}()
 	// Initialize ...
 	pty.Setsize(cm.ptmx, &cm.ptySize)
 	terminal.MakeRaw(int(cm.ptmx.Fd()))
@@ -74,7 +71,8 @@ func (cm ControlMaster) Open() {
 
 func (cm ControlMaster) sendCtrlCmd(ctrlcmd string) string {
 	name := "ssh"
-	args := append([]string{"-oControlPath=" + cm.socketPath, cm.fqcp, "-p", strconv.Itoa(cm.targetPort), "-O", ctrlcmd}, cm.sshops...)
+	args := append([]string{"-O", ctrlcmd}, cm.sshOptions...)
+	fmt.Println(name, args)
 	cmd := exec.Command(name, args...)
 	// fmt.Println(name, args)
 	out, err := cmd.CombinedOutput()
@@ -88,6 +86,7 @@ func (cm ControlMaster) sendCtrlCmd(ctrlcmd string) string {
 
 func (cm ControlMaster) Close() {
 	cm.ptmx.Close()
+	// close(cm.logs)
 }
 
 func (cm ControlMaster) Send(s string) {

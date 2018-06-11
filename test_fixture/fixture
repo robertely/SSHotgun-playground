@@ -18,9 +18,11 @@ sub_help(){
 }
 
 sub_start(){
-  for (( i=0; i<${1:-1}; i++)); do
-    docker run -d -p `printf 22%02d $i`:22 bevy_test_fixture
-  done
+  if ! sub_status; then
+    for (( i=0; i<${1:-1}; i++)); do
+      docker run -d -p `printf 22%02d $i`:22 bevy_test_fixture
+    done
+  fi
 }
 
 sub_stop(){
@@ -83,7 +85,7 @@ case $subcommand in
     ;;
   *)
     shift
-    if type -t sub_${subcommand}; then
+    if type -t sub_${subcommand} > /dev/null; then
       sub_${subcommand} $@
     else
       echo "Error: '$subcommand' is not a known subcommand." >&2
