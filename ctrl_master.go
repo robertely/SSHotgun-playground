@@ -27,6 +27,7 @@ type ControlMaster struct {
 	ptySize    pty.Winsize
 	socketPath string
 	sshOptions []string
+	target     *Target
 
 	Port int
 	logs chan string
@@ -43,8 +44,8 @@ func NewControlMaster(t Target) ControlMaster {
 	// add a control master...
 	cm.sshOptions = append([]string{"-oControlPath=" + cm.socketPath}, t.sshOptions...)
 
-	cm.cmd = exec.Command(name, append(cm.sshOptions, "-M", "-N", "-v")...)
-	fmt.Println(name, append(cm.sshOptions, "-M", "-N", "-v"))
+	cm.cmd = exec.Command(name, append(cm.sshOptions, "-M", "-N")...)
+	fmt.Println(name, append(cm.sshOptions, "-M", "-N"))
 
 	return cm
 }

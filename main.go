@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 )
 
 func main() {
@@ -20,7 +19,7 @@ func main() {
 
 	// not working at all
 	go func() {
-		for i := range t2200.logs {
+		for i := range t2200.controlMaster.logs {
 			fmt.Println(i)
 		}
 	}()
@@ -28,5 +27,5 @@ func main() {
 	t2200.controlMaster.BReady()
 	fmt.Println("Online")
 
-	time.Sleep(5 * time.Second)
+	// time.Sleep(5 * time.Second)
 }
