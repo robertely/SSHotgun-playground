@@ -10,7 +10,7 @@ type Target struct {
 	port          int
 	logs          chan string
 	sshOptions    []string
-	controlMaster ControlMaster
+	controlMaster *ControlMaster
 }
 
 type TargetOptions struct {
@@ -24,7 +24,7 @@ type TargetOptions struct {
 }
 
 // Create a new Target, configured with the given TargetOptions
-func NewTarget(o TargetOptions) Target {
+func NewTarget(o TargetOptions) *Target {
 	// explicitly copy options, one by one, providing sane defaults where possible
 
 	target := Target{
@@ -50,8 +50,8 @@ func NewTarget(o TargetOptions) Target {
 	// 	target.controlMaster = o.ControlMaster
 	// } else {
 	// create a control master, bound to this target
-	target.controlMaster = NewControlMaster(target)
+	target.controlMaster = NewControlMaster(&target)
 	// }
 
-	return target
+	return &target
 }

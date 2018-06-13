@@ -24,30 +24,26 @@ var eot = []byte{4} // End Of Transmission
 type ControlMaster struct {
 	cmd        *exec.Cmd
 	ptmx       *os.File
+	target     *Target
 	ptySize    pty.Winsize
 	socketPath string
-	sshOptions []string
-	target     *Target
-
-	Port int
-	logs chan string
 }
 
 // NewControlMaster - ControlMaster consturctor
-func NewControlMaster(t Target) ControlMaster {
+func NewControlMaster(t *Target) *ControlMaster {
 	name := "ssh"
 	cm := ControlMaster{}
-	cm.sshOptions = t.sshOptions
-	cm.logs = make(chan string, 1000) // TODO: not this.
+	cm.target = t
+	// cm.logs = make(chan string, 1000) // TODO: not this.
 	cm.ptySize = pty.Winsize{Rows: 24, Cols: 80, X: 1024, Y: 768}
 	cm.socketPath = fmt.Sprintf("sshotgun-%s-%s-%s.sock", t.hostname, t.username, strconv.Itoa(t.port))
 	// add a control master...
-	cm.sshOptions = append([]string{"-oControlPath=" + cm.socketPath}, t.sshOptions...)
-
-	cm.cmd = exec.Command(name, append(cm.sshOptions, "-M", "-N")...)
-	fmt.Println(name, append(cm.sshOptions, "-M", "-N"))
-
-	return cm
+	// Not sure how i feel about working this way. It's not easy to undo. Not clear what state its in.
+	// I think i need to put this in it's own field, use a function to compile the command line when needed...
+	t.sshOptions = append([]string{"-oControlPath=" + cm.socketPath}, t.sshOptions...)
+	cm.cmd = exec.Command(name, append(t.sshOptions, "-M", "-N")...)
+	// fmt.Println(name, append(cm.sshOptions, "-M", "-N"))
+	return &cm
 }
 
 // Open - starts ssh with control master configuration
@@ -61,9 +57,9 @@ func (cm ControlMaster) Open() {
 		outScanner := bufio.NewScanner(cm.ptmx)
 		for outScanner.Scan() {
 			// fmt.Println("----", outScanner.Text())
-			cm.logs <- outScanner.Text()
+			cm.target.logs <- outScanner.Text()
 		}
-		close(cm.logs)
+		close(cm.target.logs)
 	}()
 	// Initialize ...
 	pty.Setsize(cm.ptmx, &cm.ptySize)
@@ -72,7 +68,7 @@ func (cm ControlMaster) Open() {
 
 func (cm ControlMaster) sendCtrlCmd(ctrlcmd string) string {
 	name := "ssh"
-	args := append([]string{"-O", ctrlcmd}, cm.sshOptions...)
+	args := append([]string{"-O", ctrlcmd}, cm.target.sshOptions...)
 	fmt.Println(name, args)
 	cmd := exec.Command(name, args...)
 	// fmt.Println(name, args)
