@@ -1,6 +1,10 @@
 package main
 
 import (
+	"bufio"
+	"fmt"
+	"os"
+	"os/exec"
 	"strconv"
 )
 
@@ -17,7 +21,7 @@ type TargetOptions struct {
 	Username      string
 	Hostname      string
 	Port          int
-	Logs          chan string
+	Logs          chan Log
 	LogLen        int
 	SSHOptions    []string
 	ControlMaster ControlMaster
@@ -55,3 +59,63 @@ func NewTarget(o TargetOptions) *Target {
 
 	return &target
 }
+
+func (t *Target) SendCommand(s []string) {
+	name := "ssh"
+	args := t.sshOptions
+	if t.controlMaster.Ready() {
+		args = append(args, "-oControlPath="+t.controlMaster.socketPath)
+	}
+	args = append(args, s[0])
+	fmt.Println(name, args)
+	cmd := exec.Command(name, args...)
+
+	cmdOut, _ := cmd.StdoutPipe()
+	go func() {
+		outScanner := bufio.NewScanner(cmdOut)
+		for outScanner.Scan() {
+			t.logs <- outScanner.Text()
+		}
+	}()
+
+	cmdErr, _ := cmd.StderrPipe()
+	go func() {
+		errScanner := bufio.NewScanner(cmdErr)
+		for errScanner.Scan() {
+			t.logs <- errScanner.Text()
+		}
+	}()
+	err := cmd.Start()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "Error waiting for Cmd", err)
+	}
+	_ = cmd.Wait()
+}
+
+func (t *Target) GetRemoteTemp() string {
+	name := "ssh"
+	args := t.sshOptions
+	if t.controlMaster.Ready() {
+		args = append(args, "-oControlPath="+t.controlMaster.socketPath)
+	}
+	args = append(args, "mktemp -d -t .Bevy.$(date +%s).XXXXX")
+	fmt.Println(name, args)
+	cmd := exec.Command(name, args...)
+	cmdOut, _ := cmd.CombinedOutput()
+	return string(cmdOut[:])
+}
+
+// func (cm ControlMaster) sendCtrlCmd(ctrlcmd string) string {
+// 	name := "ssh"
+// 	args := append([]string{"-O", ctrlcmd}, cm.target.sshOptions...)
+// 	fmt.Println(name, args)
+// 	cmd := exec.Command(name, args...)
+// 	// fmt.Println(name, args)
+// 	out, err := cmd.CombinedOutput()
+// 	if err != nil {
+// 		fmt.Println(err.Error())
+// 		fmt.Printf("%s\n", out)
+// 		return ""
+// 	}
+// 	return string(out)
+// }

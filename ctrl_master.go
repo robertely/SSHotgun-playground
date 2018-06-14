@@ -40,9 +40,10 @@ func NewControlMaster(t *Target) *ControlMaster {
 	// add a control master...
 	// Not sure how i feel about working this way. It's not easy to undo. Not clear what state its in.
 	// I think i need to put this in it's own field, use a function to compile the command line when needed...
-	t.sshOptions = append([]string{"-oControlPath=" + cm.socketPath}, t.sshOptions...)
-	cm.cmd = exec.Command(name, append(t.sshOptions, "-M", "-N")...)
-	// fmt.Println(name, append(cm.sshOptions, "-M", "-N"))
+	// t.sshOptions = append([]string{"-oControlPath=" + cm.socketPath}, t.sshOptions...)
+	// Yea fuck that ^
+	cm.cmd = exec.Command(name, append(t.sshOptions, "-M", "-N", "-oControlPath="+cm.socketPath)...)
+	fmt.Println(name, append(t.sshOptions, "-M", "-N", "-oControlPath="+cm.socketPath))
 	return &cm
 }
 
@@ -59,7 +60,6 @@ func (cm ControlMaster) Open() {
 			// fmt.Println("----", outScanner.Text())
 			cm.target.logs <- outScanner.Text()
 		}
-		close(cm.target.logs)
 	}()
 	// Initialize ...
 	pty.Setsize(cm.ptmx, &cm.ptySize)
@@ -68,7 +68,7 @@ func (cm ControlMaster) Open() {
 
 func (cm ControlMaster) sendCtrlCmd(ctrlcmd string) string {
 	name := "ssh"
-	args := append([]string{"-O", ctrlcmd}, cm.target.sshOptions...)
+	args := append([]string{"-O", ctrlcmd, "-oControlPath=" + cm.socketPath}, cm.target.sshOptions...)
 	fmt.Println(name, args)
 	cmd := exec.Command(name, args...)
 	// fmt.Println(name, args)

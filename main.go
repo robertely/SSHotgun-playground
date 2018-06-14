@@ -25,5 +25,7 @@ func main() {
 
 	// polls and blocks waiting for a ready state.
 	t2200.controlMaster.BReady()
-	fmt.Println("Online")
+	fmt.Println("--- Online ---")
+	fmt.Println(t2200.GetRemoteTemp())
+	t2200.SendCommand([]string{"ls -hal /tmp/"})
 }
