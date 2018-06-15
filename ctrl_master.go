@@ -57,8 +57,12 @@ func (cm ControlMaster) Open() {
 	go func() {
 		outScanner := bufio.NewScanner(cm.ptmx)
 		for outScanner.Scan() {
-			// fmt.Println("----", outScanner.Text())
-			cm.target.logs <- outScanner.Text()
+			cm.target.logs <- Log{
+				Origin: cm.target,
+				Msg:    outScanner.Text(),
+				RxTime: time.Now(),
+				Source: "ControlMaster",
+				Type:   "stdout"}
 		}
 	}()
 	// Initialize ...

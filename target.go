@@ -2,19 +2,23 @@ package main
 
 import (
 	"bufio"
+	"crypto/md5"
 	"fmt"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
+	"time"
 )
 
 type Target struct {
 	username      string
 	hostname      string
 	port          int
-	logs          chan string
+	logs          chan Log
 	sshOptions    []string
 	controlMaster *ControlMaster
+	sessionID     string
 }
 
 type TargetOptions struct {
@@ -34,7 +38,7 @@ func NewTarget(o TargetOptions) *Target {
 	target := Target{
 		username:   o.Username,
 		hostname:   o.Hostname,
-		logs:       make(chan string, o.LogLen),
+		logs:       make(chan Log, o.LogLen),
 		sshOptions: o.SSHOptions,
 	}
 
@@ -56,8 +60,15 @@ func NewTarget(o TargetOptions) *Target {
 	// create a control master, bound to this target
 	target.controlMaster = NewControlMaster(&target)
 	// }
-
+	target.sessionID = target.makeSessionId()
 	return &target
+}
+
+func (t *Target) makeSessionId() string {
+	s := md5.New()
+	str := t.username + t.hostname + strconv.Itoa(t.port) + strconv.Itoa(int(time.Now().UnixNano()))
+	s.Write([]byte(str))
+	return fmt.Sprintf("%X", s.Sum(nil)[:])
 }
 
 func (t *Target) SendCommand(s []string) {
@@ -66,7 +77,7 @@ func (t *Target) SendCommand(s []string) {
 	if t.controlMaster.Ready() {
 		args = append(args, "-oControlPath="+t.controlMaster.socketPath)
 	}
-	args = append(args, s[0])
+	args = append(args, s...) // oh man is this wrong
 	fmt.Println(name, args)
 	cmd := exec.Command(name, args...)
 
@@ -74,16 +85,24 @@ func (t *Target) SendCommand(s []string) {
 	go func() {
 		outScanner := bufio.NewScanner(cmdOut)
 		for outScanner.Scan() {
-			t.logs <- outScanner.Text()
+			t.logs <- Log{
+				Origin: t,
+				Msg:    outScanner.Text(),
+				RxTime: time.Now(),
+				Source: "Command",
+				Type:   "stdout"}
 		}
 	}()
 
 	cmdErr, _ := cmd.StderrPipe()
 	go func() {
 		errScanner := bufio.NewScanner(cmdErr)
-		for errScanner.Scan() {
-			t.logs <- errScanner.Text()
-		}
+		t.logs <- Log{
+			Origin: t,
+			Msg:    errScanner.Text(),
+			RxTime: time.Now(),
+			Source: "Command",
+			Type:   "stderr"}
 	}()
 	err := cmd.Start()
 	if err != nil {
@@ -98,24 +117,9 @@ func (t *Target) GetRemoteTemp() string {
 	if t.controlMaster.Ready() {
 		args = append(args, "-oControlPath="+t.controlMaster.socketPath)
 	}
-	args = append(args, "mktemp -d -t .Bevy.$(date +%s).XXXXX")
+	args = append(args, "mktemp -d -t .Bevy.XXXX."+t.sessionID)
 	fmt.Println(name, args)
 	cmd := exec.Command(name, args...)
 	cmdOut, _ := cmd.CombinedOutput()
-	return string(cmdOut[:])
+	return strings.TrimRight(string(cmdOut[:]), "\n")
 }
-
-// func (cm ControlMaster) sendCtrlCmd(ctrlcmd string) string {
-// 	name := "ssh"
-// 	args := append([]string{"-O", ctrlcmd}, cm.target.sshOptions...)
-// 	fmt.Println(name, args)
-// 	cmd := exec.Command(name, args...)
-// 	// fmt.Println(name, args)
-// 	out, err := cmd.CombinedOutput()
-// 	if err != nil {
-// 		fmt.Println(err.Error())
-// 		fmt.Printf("%s\n", out)
-// 		return ""
-// 	}
-// 	return string(out)
-// }
