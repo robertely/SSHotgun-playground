@@ -14,10 +14,10 @@ type Log struct {
 }
 
 func (l Log) String() string {
-	s := fmt.Sprintf("%s\n", l.Origin.sessionID)
-	s += fmt.Sprintf("  source: '%s'\n", l.Source)
-	s += fmt.Sprintf("  type: '%s'\n", l.Type)
-	s += fmt.Sprintf("  RxTime: '%v'\n", l.RxTime.Unix())
-	s += fmt.Sprintf("  msg: '%s'\n", l.Msg)
+	s := fmt.Sprintf("Id: %s, ", l.Origin.sessionID)
+	s += fmt.Sprintf("source: '%s', ", l.Source)
+	s += fmt.Sprintf("type: '%s', ", l.Type)
+	s += fmt.Sprintf("RxTime: '%v', ", l.RxTime.Unix())
+	s += fmt.Sprintf("msg: '%s'}", l.Msg)
 	return s
 }
