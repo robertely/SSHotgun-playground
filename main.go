@@ -3,11 +3,13 @@ package main
 import (
 	// "fmt"
 	log "github.com/sirupsen/logrus"
+	"os"
+	"runtime"
 	"time"
 )
 
 func main() {
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 
 	t2200 := NewTarget(TargetOptions{
 		Username:   "test_user",
@@ -17,7 +19,7 @@ func main() {
 	})
 
 	t2200.controlMaster.Open()
-	defer t2200.controlMaster.Close()
+	defer t2200.controlMaster.Exit()
 
 	// read the logs
 	go func() {
@@ -27,12 +29,16 @@ func main() {
 	}()
 
 	// polls and blocks waiting for a ready state.
-	t2200.controlMaster.BReady()
+	err := t2200.controlMaster.BlockingReady(10 * time.Second)
+	if err != nil {
+		log.Error(err)
+		t2200.controlMaster.Kill()
+		defer os.Exit(5)
+		runtime.Goexit()
+	}
 	// Create remote tempdir
 	// _ = t2200.GetRemoteTemp()
 	t2200.SendCommand([]string{"echo", "Hello", "World"})
 	t2200.SendCommand([]string{"whoami"})
-	time.Sleep(3 * time.Second)
-	t2200.controlMaster.Close()
 	time.Sleep(3 * time.Second)
 }
