@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+
+	log "github.com/sirupsen/logrus"
 	// "strconv"
 	"strings"
 	"time"
@@ -45,7 +46,7 @@ func NewControlMaster(t *Target) *ControlMaster {
 // Open - starts ssh with control master configuration
 func (cm *ControlMaster) Open() {
 	name := cm.target.sshcmd
-	args := append(cm.target.CmdBuilder(true), "-M", "-N", "-S", cm.socketPath)
+	args := append(cm.target.CmdBuilder(true), "-M", "-N")
 	log.Debug(name, args)
 	cm.cmd = exec.Command(name, args...)
 	cmdOut, _ := cm.cmd.StdoutPipe()
@@ -53,23 +54,27 @@ func (cm *ControlMaster) Open() {
 		outScanner := bufio.NewScanner(cmdOut)
 		for outScanner.Scan() {
 			cm.target.logs <- Log{
-				Origin: cm.target,
-				Msg:    outScanner.Text(),
-				RxTime: time.Now(),
-				Source: "ControlMaster",
-				Type:   "stdout"}
+				Origin:  cm.target,
+				Msg:     outScanner.Text(),
+				RxTime:  time.Now(),
+				Source:  "ControlMaster",
+				Context: strings.Join(cm.cmd.Args, " "),
+				Stream:  "stdout"}
 		}
 	}()
 
 	cmdErr, _ := cm.cmd.StderrPipe()
 	go func() {
 		errScanner := bufio.NewScanner(cmdErr)
-		cm.target.logs <- Log{
-			Origin: cm.target,
-			Msg:    errScanner.Text(),
-			RxTime: time.Now(),
-			Source: "ControlMaster",
-			Type:   "stderr"}
+		for errScanner.Scan() {
+			cm.target.logs <- Log{
+				Origin:  cm.target,
+				Msg:     errScanner.Text(),
+				RxTime:  time.Now(),
+				Source:  "ControlMaster",
+				Context: strings.Join(cm.cmd.Args, " "),
+				Stream:  "stderr"}
+		}
 	}()
 	cm.stdin, _ = cm.cmd.StdinPipe()
 

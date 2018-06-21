@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"crypto/md5"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 type Target struct {
@@ -69,6 +70,12 @@ func NewTarget(o TargetOptions) *Target {
 
 func (t *Target) CmdBuilder(useCM bool) []string {
 	result := t.sshOptions
+
+	// Use controlmaster if ready
+	if useCM {
+		result = append(result, "-S", t.controlMaster.socketPath)
+	}
+
 	// append port if specificed
 	if t.port != 0 {
 		result = append(result, "-p", strconv.Itoa(t.port))
@@ -79,11 +86,6 @@ func (t *Target) CmdBuilder(useCM bool) []string {
 	} else {
 		result = append(result, t.username+"@"+t.hostname)
 	}
-	// Use controlmaster if ready
-	if useCM {
-		result = append(result, "-oControlPath="+t.controlMaster.socketPath)
-	}
-
 	return result
 }
 
@@ -106,23 +108,27 @@ func (t *Target) SendCommand(s []string) {
 		outScanner := bufio.NewScanner(cmdOut)
 		for outScanner.Scan() {
 			t.logs <- Log{
-				Origin: t,
-				Msg:    outScanner.Text(),
-				RxTime: time.Now(),
-				Source: "Command",
-				Type:   "stdout"}
+				Origin:  t,
+				Msg:     outScanner.Text(),
+				RxTime:  time.Now(),
+				Source:  "Command",
+				Context: strings.Join(cmd.Args, " "),
+				Stream:  "stdout"}
 		}
 	}()
 
 	cmdErr, _ := cmd.StderrPipe()
 	go func() {
 		errScanner := bufio.NewScanner(cmdErr)
-		t.logs <- Log{
-			Origin: t,
-			Msg:    errScanner.Text(),
-			RxTime: time.Now(),
-			Source: "Command",
-			Type:   "stderr"}
+		for errScanner.Scan() {
+			t.logs <- Log{
+				Origin:  t,
+				Msg:     errScanner.Text(),
+				RxTime:  time.Now(),
+				Source:  "Command",
+				Context: strings.Join(cmd.Args, " "),
+				Stream:  "stderr"}
+		}
 	}()
 	err := cmd.Start()
 	if err != nil {
@@ -135,7 +141,7 @@ func (t *Target) GetRemoteTemp() string {
 	name := t.sshcmd
 	args := t.CmdBuilder(t.controlMaster.Ready())
 
-	args = append(args, "mktemp -d -t .Bevy.XXXX."+t.sessionID)
+	args = append(args, "mktemp -d -t Bevy.XXXX."+t.sessionID)
 	log.Debug(name, args)
 	cmd := exec.Command(name, args...)
 	cmdOut, _ := cmd.CombinedOutput()
