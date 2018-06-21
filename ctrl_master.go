@@ -57,7 +57,7 @@ func (cm *ControlMaster) Open() {
 				Origin:  cm.target,
 				Msg:     outScanner.Text(),
 				RxTime:  time.Now(),
-				Source:  "ControlMaster",
+				Source:  "Master",
 				Context: strings.Join(cm.cmd.Args, " "),
 				Stream:  "stdout"}
 		}
@@ -71,7 +71,7 @@ func (cm *ControlMaster) Open() {
 				Origin:  cm.target,
 				Msg:     errScanner.Text(),
 				RxTime:  time.Now(),
-				Source:  "ControlMaster",
+				Source:  "Master",
 				Context: strings.Join(cm.cmd.Args, " "),
 				Stream:  "stderr"}
 		}
@@ -106,6 +106,7 @@ func (cm *ControlMaster) sendCtrlCmd(ctrlcmd string) string {
 	return string(out)
 }
 
+// Send - string on stdin to ControlMaster process
 func (cm ControlMaster) Send(s string) {
 	io.WriteString(cm.stdin, s)
 }
@@ -118,7 +119,7 @@ func (cm *ControlMaster) Kill() {
 }
 
 // Ready - ssh ctl_cmd
-// (check that the master process is running)
+// check that the master process is running and prepared to accept connections
 func (cm *ControlMaster) Ready() bool {
 	if !cm.running {
 		return false
@@ -136,9 +137,12 @@ func (cm *ControlMaster) Ready() bool {
 	return false
 }
 
+// BlockingReady - Blocks and polls waiting for control master to come up.
+// time out specifies a time to wait. (imperfect but near enogh)
 func (cm *ControlMaster) BlockingReady(timeout time.Duration) error {
 	log.Info("Waiting for control master...")
 	start := time.Now()
+	// should cm.Ready return error type? should that bubble up ?
 	for !cm.Ready() {
 		time.Sleep(250 * time.Millisecond)
 		if time.Now().After(start.Add(timeout)) {

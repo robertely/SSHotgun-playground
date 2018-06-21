@@ -1,7 +1,7 @@
 package main
 
 import (
-	// "fmt"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"os"
 	"runtime"
@@ -24,7 +24,7 @@ func main() {
 	// read the logs
 	go func() {
 		for i := range t2200.logs {
-			log.Info(i)
+			fmt.Println(i)
 		}
 	}()
 
@@ -38,7 +38,7 @@ func main() {
 	}
 	// Create remote tempdir
 	// _ = t2200.GetRemoteTemp()
-	t2200.SendCommand([]string{"echo", "Hello", "World"})
+	t2200.SendCommand([]string{">&2 echo", "Some Error"})
 	t2200.SendCommand([]string{"whoami"})
 	time.Sleep(3 * time.Second)
 }

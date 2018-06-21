@@ -111,7 +111,7 @@ func (t *Target) SendCommand(s []string) {
 				Origin:  t,
 				Msg:     outScanner.Text(),
 				RxTime:  time.Now(),
-				Source:  "Command",
+				Source:  s[0],
 				Context: strings.Join(cmd.Args, " "),
 				Stream:  "stdout"}
 		}
@@ -125,7 +125,7 @@ func (t *Target) SendCommand(s []string) {
 				Origin:  t,
 				Msg:     errScanner.Text(),
 				RxTime:  time.Now(),
-				Source:  "Command",
+				Source:  s[0],
 				Context: strings.Join(cmd.Args, " "),
 				Stream:  "stderr"}
 		}

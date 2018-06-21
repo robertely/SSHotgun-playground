@@ -15,11 +15,17 @@ type Log struct {
 }
 
 func (l Log) String() string {
-	s := fmt.Sprintf("Id: %s, ", l.Origin.sessionID)
-	s += fmt.Sprintf("source: '%s', ", l.Source)
-	s += fmt.Sprintf("stream: '%s', ", l.Stream)
-	s += fmt.Sprintf("context: '%s', ", l.Context)
-	s += fmt.Sprintf("RxTime: '%v', ", l.RxTime.Unix())
-	s += fmt.Sprintf("msg: '%s'}", l.Msg)
+	var s string
+	if l.Stream == "stderr" {
+		s += "[ERR]"
+	} else if l.Stream == "stdout" {
+		s += "[OUT]"
+	} else {
+		s += fmt.Sprintf("[%s]", l.Stream)
+	}
+	s += fmt.Sprintf("[%s]", l.Origin.sessionID)
+	s += fmt.Sprintf("[%s]", l.Origin.hostname)
+	s += fmt.Sprintf("[%s]", l.Source)
+	s += fmt.Sprintf(": %s", l.Msg)
 	return s
 }
