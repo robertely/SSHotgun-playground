@@ -39,7 +39,7 @@ type ControlMaster struct {
 func NewControlMaster(t *Target) *ControlMaster {
 	cm := ControlMaster{}
 	cm.target = t
-	cm.socketPath = fmt.Sprintf("sshotgun-%%h-%%p-%%r.%s.sock", t.sessionID)
+	cm.socketPath = fmt.Sprintf("bevy-%%h-%%p-%%r.%s.sock", t.sessionID)
 	return &cm
 }
 

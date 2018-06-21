@@ -37,7 +37,7 @@ stty rows 24
 stty cols 80
 
 RUNNING_USER=$(id -u -n)
-WORK_DIR=$(mktemp -d -t sshotgun.$RUNNING_USER.XXXXXX)
+WORK_DIR=$(mktemp -d -t bevy.$RUNNING_USER.XXXXXX)
 cd $WORK_DIR
 echo $WORK_DIR
 ```
