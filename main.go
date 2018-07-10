@@ -2,20 +2,23 @@ package main
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"runtime"
 	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
 
 	t2200 := NewTarget(TargetOptions{
-		Username:   "test_user",
-		Hostname:   "127.0.0.1",
-		Port:       2200,
-		SSHOptions: []string{"-itest_fixture/testing_key.rsa", "-oStrictHostKeyChecking=no", "-oUserKnownHostsFile=/dev/null"},
+		Username: "test_user",
+		Hostname: "127.0.0.1",
+		Port:     2200,
+		SSHOptions: []string{"-itest_fixture/testing_key.rsa",
+			"-oStrictHostKeyChecking=no",
+			"-oUserKnownHostsFile=/dev/null"},
 	})
 
 	t2200.controlMaster.Open()
@@ -38,7 +41,7 @@ func main() {
 	}
 	// Create remote tempdir
 	// _ = t2200.GetRemoteTemp()
-	t2200.SendCommand([]string{">&2 echo", "Some Error"})
-	t2200.SendCommand([]string{"whoami"})
+	t2200.SendCommand([]string{"echo", "Some Error"})
+	t2200.SendCommand([]string{"sudo", "-S", "whoami"})
 	time.Sleep(3 * time.Second)
 }

@@ -19,6 +19,7 @@ type Target struct {
 	password      string
 	sudopassword  string
 	sshcmd        string
+	fault         bool
 	port          int
 	logs          chan Log
 	sshOptions    []string
@@ -49,6 +50,7 @@ func NewTarget(o TargetOptions) *Target {
 		port:         o.Port,
 		logs:         make(chan Log, o.LogLen),
 		sshOptions:   o.SSHOptions,
+		fault:        false,
 		password:     o.Password,
 		sudopassword: o.SudoPassword,
 	}
@@ -93,7 +95,7 @@ func (t *Target) makeSessionId() string {
 	s := md5.New()
 	str := t.username + t.hostname + strconv.Itoa(t.port) + strconv.Itoa(int(time.Now().UnixNano()))
 	s.Write([]byte(str))
-	return fmt.Sprintf("%X", s.Sum(nil)[:])
+	return fmt.Sprintf("%X", s.Sum(nil)[:6])
 }
 
 func (t *Target) SendCommand(s []string) {

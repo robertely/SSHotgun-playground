@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/kr/pty"
 	log "github.com/sirupsen/logrus"
 	// "strconv"
 	"strings"
@@ -25,11 +26,11 @@ var eot = []byte{4} // End Of Transmission
 
 // ControlMaster holds connection details of the master ssh connection
 type ControlMaster struct {
-	cmd *exec.Cmd
-	// ptmx   *os.File
-	target *Target
-	stdin  io.Writer
-	// ptySize    pty.Winsize
+	cmd        *exec.Cmd
+	ptmx       *os.File
+	target     *Target
+	stdin      io.Writer
+	ptySize    pty.Winsize
 	socketPath string
 	running    bool
 	expectExit bool
@@ -86,6 +87,7 @@ func (cm *ControlMaster) Open() {
 	go func() {
 		err = cm.cmd.Wait()
 		cm.running = false
+		cm.target.fault = true
 		if err != nil && !cm.expectExit {
 			log.Error("Control master exited unexpectidly: ", err)
 		}
@@ -162,7 +164,7 @@ func (cm *ControlMaster) Exit() error {
 	cm.expectExit = true
 	stdout := cm.sendCtrlCmd("exit")
 	if strings.HasPrefix(string(stdout), "Exit request sent.") {
-		log.Debug("ControlMaster accepted exit request")
+		log.Debug("ControlMaster acknolaged exit request")
 		return nil
 	}
 	return errors.New("ControlMaster Exit request failed")
