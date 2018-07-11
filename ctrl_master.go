@@ -8,13 +8,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/kr/pty"
 	log "github.com/sirupsen/logrus"
-	// "strconv"
-	"strings"
-	"time"
-	// "github.com/kr/pty"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 // Terms:
@@ -29,8 +28,10 @@ type ControlMaster struct {
 	cmd        *exec.Cmd
 	ptmx       *os.File
 	target     *Target
+	expecters  []*Expecter
 	stdin      io.Writer
 	ptySize    pty.Winsize
+	usePty     bool
 	socketPath string
 	running    bool
 	expectExit bool
@@ -44,12 +45,44 @@ func NewControlMaster(t *Target) *ControlMaster {
 	return &cm
 }
 
-// Open - starts ssh with control master configuration
 func (cm *ControlMaster) Open() {
 	name := cm.target.sshcmd
 	args := append(cm.target.CmdBuilder(true), "-M", "-N")
 	log.Debug(name, args)
 	cm.cmd = exec.Command(name, args...)
+	if cm.usePty {
+		cm.OpenPty()
+	} else {
+		cm.OpenStd()
+	}
+}
+
+func (cm *ControlMaster) OpenPty() {
+	var err error // K. https://github.com/golang/go/issues/6842
+	cm.running = true
+	cm.ptmx, err = pty.Start(cm.cmd)
+	if err != nil {
+		panic(err)
+	}
+	go func() {
+		ptyScanner := bufio.NewScanner(cm.ptmx)
+		for ptyScanner.Scan() {
+			cm.target.logs <- Log{
+				Origin:  cm.target,
+				Msg:     ptyScanner.Text(),
+				RxTime:  time.Now(),
+				Source:  "Master",
+				Context: strings.Join(cm.cmd.Args, " "),
+				Stream:  "pty"}
+		}
+	}()
+
+	pty.Setsize(cm.ptmx, &cm.ptySize)
+	terminal.MakeRaw(int(cm.ptmx.Fd()))
+}
+
+// Open - starts ssh with control master configuration
+func (cm *ControlMaster) OpenStd() {
 	cmdOut, _ := cm.cmd.StdoutPipe()
 	go func() {
 		outScanner := bufio.NewScanner(cmdOut)
@@ -60,7 +93,7 @@ func (cm *ControlMaster) Open() {
 				RxTime:  time.Now(),
 				Source:  "Master",
 				Context: strings.Join(cm.cmd.Args, " "),
-				Stream:  "stdout"}
+				Stream:  "out"}
 		}
 	}()
 
@@ -74,7 +107,7 @@ func (cm *ControlMaster) Open() {
 				RxTime:  time.Now(),
 				Source:  "Master",
 				Context: strings.Join(cm.cmd.Args, " "),
-				Stream:  "stderr"}
+				Stream:  "err"}
 		}
 	}()
 	cm.stdin, _ = cm.cmd.StdinPipe()

@@ -16,11 +16,13 @@ func main() {
 		Username: "test_user",
 		Hostname: "127.0.0.1",
 		Port:     2200,
-		SSHOptions: []string{"-itest_fixture/testing_key.rsa",
-			"-oStrictHostKeyChecking=no",
+		SSHOptions: []string{"-oStrictHostKeyChecking=no",
+			// "-itest_fixture/testing_key.rsa",
 			"-oUserKnownHostsFile=/dev/null"},
 	})
-
+	t2200.controlMaster.usePty = true
+	// x := regexp.MustCompile("a")
+	// t2200.controlMaster.expecters = []*Expecter{x}
 	t2200.controlMaster.Open()
 	defer t2200.controlMaster.Exit()
 
